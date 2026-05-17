@@ -1,0 +1,15 @@
+# Ignore exported client reports and raw data
+Exports/
+*.zip
+*.doc
+*.csv
+*.txt
+
+# Ignore historical network baselines to prevent data leaks
+SubnetBaseline.json
+
+# Standard PowerShell ignores
+*.ps1xml
+*.clixml
+*.psc1
+*.pssc
