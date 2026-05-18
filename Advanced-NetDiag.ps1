@@ -1,10 +1,10 @@
-﻿<#
+<#
 .SYNOPSIS
-    Universal Network Diagnostic Suite v25.0 (Open Source Edition)
+    Universal Network Diagnostic Suite v25.0 (Sentinel Edition)
 .DESCRIPTION
     The ultimate self-contained infrastructure assistant. Features automated 
     MTR, Subnet Diffing (Rogue Detection), Local Attack Surface Mapping, 
-    Network Vulnerability Matrix, Dynamic Bandwidth profiling, and Visual Telemetry.
+    Network Vulnerability Matrix, Dynamic Bandwidth profiling, and Deep Domain OSINT.
 .AUTHOR
     Created for the Systems Engineering community.
 #>
@@ -554,6 +554,134 @@ Function Invoke-PackAndGo {
         }
     }
 }
+
+Function Invoke-DomainCheck {
+    Write-Log "`n--- MODERN DOMAIN WHOIS (RDAP) ---" "Cyan"
+    $domain = Get-SingleTarget "Enter Target Domain (e.g., example.com)"; if (!$domain) { return }
+    $domain = $domain -replace "https?://", "" -replace "www\.", "" # Clean input
+    
+    Write-Log "Querying ICANN RDAP Database for $domain..." "Yellow"
+    $html = "<table><tr><th>Attribute</th><th>Data</th></tr>"
+    
+    try {
+        # Using RDAP (Registration Data Access Protocol) - The modern replacement for WHOIS
+        $rdap = Invoke-RestMethod -Uri "https://rdap.org/domain/$domain" -ErrorAction Stop
+        
+        # Extract Dates
+        $regDate = ($rdap.events | Where-Object eventAction -eq "registration").eventDate
+        $expDate = ($rdap.events | Where-Object eventAction -eq "expiration").eventDate
+        
+        # Extract Registrar
+        $registrar = ($rdap.entities | Where-Object roles -contains "registrar").vcardArray[1][1][3]
+        
+        # Extract Name Servers
+        $nameServers = ($rdap.nameservers.ldhName) -join ", "
+
+        Write-Log "Status     : REGISTERED (Unavailable)" "Red"
+        Write-Log "Registrar  : $registrar" "White"
+        Write-Log "Created    : $regDate" "White"
+        Write-Log "Expires    : $expDate" "White"
+        Write-Log "Nameservers: $nameServers" "White"
+
+        $html += "<tr><td>Domain Status</td><td class='warn-text'>Registered (Taken)</td></tr>"
+        $html += "<tr><td>Registrar</td><td>$registrar</td></tr>"
+        $html += "<tr><td>Registration Date</td><td>$regDate</td></tr>"
+        $html += "<tr><td>Expiration Date</td><td>$expDate</td></tr>"
+        $html += "<tr><td>Name Servers</td><td>$nameServers</td></tr>"
+
+    } catch {
+        if ($_.Exception.Response.StatusCode -eq "NotFound") {
+            Write-Log "Status     : AVAILABLE (Or invalid TLD)" "Green"
+            $html += "<tr><td>Domain Status</td><td class='ok-text'>Available (Not Registered)</td></tr>"
+            Add-Insight "Domain $domain appears to be available for registration."
+        } else {
+            Write-Log "Query Failed: Could not reach RDAP server or rate limit exceeded." "Red"
+            $html += "<tr><td>Error</td><td class='warn-text'>RDAP Query Failed</td></tr>"
+        }
+    }
+    
+    $html += "</table>"; Export-ToWord $html "DomainCheck" "Domain WHOIS & Registration Data"
+}
+
+Function Invoke-DomainDossier {
+    Write-Log "`n--- DEEP DOMAIN DOSSIER (OSINT) ---" "Cyan"
+    $domain = Get-SingleTarget "Enter Target Domain (e.g., example.com)"; if (!$domain) { return }
+    $domain = $domain -replace "https?://", "" -replace "www\.", ""
+    
+    $html = "<h3>DNS Enumeration</h3><table><tr><th>Record Type</th><th>Value</th></tr>"
+    
+    # Phase 1: DNS Enumeration
+    Write-Log "Enumerating DNS Records..." "Yellow"
+    try {
+        # Strict filtering added to prevent SOA record pipeline crashes
+        $dnsA = Resolve-DnsName $domain -Type A -ErrorAction SilentlyContinue | Where-Object { $_.Type -eq 'A' }
+        $aRecords = if ($dnsA) { @($dnsA.IPAddress) } else { @() }
+        
+        $dnsMX = Resolve-DnsName $domain -Type MX -ErrorAction SilentlyContinue | Where-Object { $_.Type -eq 'MX' }
+        $mxRecords = if ($dnsMX) { @($dnsMX.NameExchange) } else { @() }
+        
+        $dnsTXT = Resolve-DnsName $domain -Type TXT -ErrorAction SilentlyContinue | Where-Object { $_.Type -eq 'TXT' }
+        $txtRecords = if ($dnsTXT) { @($dnsTXT.Strings) } else { @() }
+        
+        if ($aRecords.Count -gt 0) { Write-Log " [A]   IPv4: $($aRecords -join ', ')" "Green"; $html += "<tr><td>A (IPv4)</td><td>$($aRecords -join '<br>')</td></tr>" }
+        if ($mxRecords.Count -gt 0) { Write-Log " [MX]  Mail: $($mxRecords -join ', ')" "White"; $html += "<tr><td>MX (Mail)</td><td>$($mxRecords -join '<br>')</td></tr>" }
+        if ($txtRecords.Count -gt 0) { 
+            Write-Log " [TXT] Sec : $($txtRecords -join ' | ')" "White"
+            $html += "<tr><td>TXT (Security)</td><td>$($txtRecords -join '<br>')</td></tr>"
+            if ($txtRecords -match "v=spf1") { Add-Insight "Domain $domain has an SPF record configured for email security." }
+            else { Add-Insight "WARNING: No SPF record found. Domain is vulnerable to email spoofing." }
+        }
+    } catch { Write-Log "DNS Enumeration Failed." "Red" }
+    $html += "</table>"
+
+    # Phase 2: Geolocation & ASN Mapping (Using free ip-api.com)
+    if ($aRecords.Count -gt 0) {
+        $primaryIp = [string]$aRecords[0]
+        Write-Log "`nMapping Infrastructure Geolocation for $primaryIp..." "Yellow"
+        $html += "<h3>Infrastructure Geolocation</h3><table><tr><th>Attribute</th><th>Data</th></tr>"
+        try {
+            $geo = Invoke-RestMethod -Uri "http://ip-api.com/json/$primaryIp" -ErrorAction SilentlyContinue
+            if ($geo.status -eq "success") {
+                Write-Log " ISP     : $($geo.isp)" "White"
+                Write-Log " Org/ASN : $($geo.org) / $($geo.as)" "White"
+                Write-Log " Location: $($geo.city), $($geo.regionName), $($geo.country)" "White"
+                
+                $html += "<tr><td>ISP / Host</td><td>$($geo.isp)</td></tr>"
+                $html += "<tr><td>ASN Details</td><td>$($geo.as) ($($geo.org))</td></tr>"
+                $html += "<tr><td>Physical Location</td><td>$($geo.city), $($geo.regionName), $($geo.country)</td></tr>"
+            }
+        } catch { Write-Log "Geolocation lookup failed." "Red" }
+        $html += "</table>"
+        
+        # Phase 3: Stealth Service Scan
+        Write-Log "`nRunning Stealth Service Scan (Ports 80, 443, 21, 22, 3389) on $primaryIp..." "Yellow"
+        $html += "<h3>Exposed Services</h3><table><tr><th>Port</th><th>Service</th><th>Status</th></tr>"
+        $targetPorts = @(80, 443, 21, 22, 3389)
+        $portNames = @{80="HTTP"; 443="HTTPS"; 21="FTP"; 22="SSH"; 3389="RDP"}
+        $tasks = @()
+        
+        foreach($p in $targetPorts) {
+            $tcp = [System.Net.Sockets.TcpClient]::new()
+            # Explicit casting added to resolve .NET ambiguous overload errors
+            $res = $tcp.BeginConnect([string]$primaryIp, [int]$p, $null, $null)
+            $tasks += [PSCustomObject]@{ Port = $p; AsyncResult = $res; Client = $tcp }
+        }
+        foreach ($t in $tasks) {
+            $success = $t.AsyncResult.AsyncWaitHandle.WaitOne(1000)
+            if ($success -and $t.Client.Connected) { 
+                Write-Log " Port $($t.Port) ($($portNames[$t.Port])) : OPEN" "Green" 
+                $html += "<tr><td>$($t.Port)</td><td>$($portNames[$t.Port])</td><td class='ok-text'>OPEN</td></tr>"
+            } else { 
+                Write-Log " Port $($t.Port) ($($portNames[$t.Port])) : CLOSED" "DarkGray" 
+                $html += "<tr><td>$($t.Port)</td><td>$($portNames[$t.Port])</td><td>Closed</td></tr>"
+            }
+            $t.Client.Close()
+        }
+        $html += "</table>"
+    }
+    
+    Export-ToWord $html "DomainDossier" "Deep Domain Reconnaissance (OSINT)"
+}
 #endregion
 
 # --- UI MAIN LOOP ---
@@ -573,7 +701,8 @@ while ($run) {
         "13. Local Adapter Health",       "14. WMI/CIM OS Inspection",
         "15. Native SSH Quick-Connect",   "16. Wake-on-LAN (WoL) Integrator",
         "17. Smart IP & DNS Config",      "18. Open Exports Folder",
-        "19. Pack & Go (Zip and Exit)",   ""
+        "19. Pack & Go (Zip and Exit)",   "20. Modern Domain Check (RDAP)",
+        "21. Deep Domain Dossier (OSINT)",""
     )
     for ($i = 0; $i -lt $m.Count; $i += 2) { $left = $m[$i].PadRight(35); $right = $m[$i+1]; Write-Host "  $left  $right" }
     Write-Host "--------------------------------------------------------------------------"
@@ -584,5 +713,6 @@ while ($run) {
         "9"{Invoke-LocalAttackSurface};"10"{Invoke-VulnMatrix};"11"{Invoke-BandwidthTest};"12"{Invoke-PortScan}
         "13"{Invoke-AdapterHealth};"14"{Invoke-DeepOSInspection};"15"{Invoke-SSHLauncher};"16"{Invoke-WakeOnLan}
         "17"{Invoke-IPConfigurator};"18"{Invoke-Item $exportDir -ErrorAction SilentlyContinue};"19"{$run=$false; Invoke-PackAndGo}
+        "20"{Invoke-DomainCheck};"21"{Invoke-DomainDossier}
     }
 }
