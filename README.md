@@ -58,5 +58,5 @@ If you are running Datto EDR, Sophos MDR, CrowdStrike, or SentinelOne, ensure th
 
 ## 📄 License
 This project is licensed under the MIT License - see the `LICENSE` file for details.
-<img width="822" height="483" alt="Image" src="https://github.com/user-attachments/assets/b26e33b6-2965-4667-9913-01dec40c7dbf" />
+<img width="561" height="221" alt="Image" src="https://github.com/user-attachments/assets/2fbb988a-1449-43c4-98b4-9f2049eb4161" />
 <img width="1081" height="812" alt="Image" src="https://github.com/user-attachments/assets/641a0d36-dbbf-418e-9f0e-88013c806cb3" />
