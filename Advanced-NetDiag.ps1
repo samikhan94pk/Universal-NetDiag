@@ -540,21 +540,6 @@ Function Invoke-IPConfigurator {
     else{$ip=Read-Host "IP";$pr=Read-Host "Prefix (e.g. 24)";$gw=Read-Host "Gateway";New-NetIPAddress -Alias $t.Name -IPAddress $ip -PrefixLength $pr -DefaultGateway $gw; Write-Log "Static Active." "Green"}
 }
 
-Function Invoke-PackAndGo {
-    $zipPath = "$baseDir\NetDiag_Archive_$(Get-Date -Format 'yyyyMMdd_HHmmss').zip"
-    if (Test-Path $exportDir) {
-        $files = Get-ChildItem -Path $exportDir
-        if ($files.Count -gt 0) {
-            Compress-Archive -Path "$exportDir\*" -DestinationPath $zipPath -Force
-            Remove-Item $exportDir -Recurse -Force
-            Write-Log "`n[+] Archived all reports to: $zipPath" "Green"
-            Write-Log "[+] Cleaned up raw Export directory." "Green"
-        } else {
-            Write-Log "`n[!] No reports were generated during this session to archive." "Yellow"
-        }
-    }
-}
-
 Function Invoke-DomainCheck {
     Write-Log "`n--- MODERN DOMAIN WHOIS (RDAP) ---" "Cyan"
     $domain = Get-SingleTarget "Enter Target Domain (e.g., example.com)"; if (!$domain) { return }
@@ -682,6 +667,21 @@ Function Invoke-DomainDossier {
     
     Export-ToWord $html "DomainDossier" "Deep Domain Reconnaissance (OSINT)"
 }
+
+Function Invoke-PackAndGo {
+    $zipPath = "$baseDir\NetDiag_Archive_$(Get-Date -Format 'yyyyMMdd_HHmmss').zip"
+    if (Test-Path $exportDir) {
+        $files = Get-ChildItem -Path $exportDir
+        if ($files.Count -gt 0) {
+            Compress-Archive -Path "$exportDir\*" -DestinationPath $zipPath -Force
+            Remove-Item $exportDir -Recurse -Force
+            Write-Log "`n[+] Archived all reports to: $zipPath" "Green"
+            Write-Log "[+] Cleaned up raw Export directory." "Green"
+        } else {
+            Write-Log "`n[!] No reports were generated during this session to archive." "Yellow"
+        }
+    }
+}
 #endregion
 
 # --- UI MAIN LOOP ---
@@ -700,9 +700,9 @@ while ($run) {
         "11. Native TCP Bandwidth Tester","12. Async TCP Port Scanner",
         "13. Local Adapter Health",       "14. WMI/CIM OS Inspection",
         "15. Native SSH Quick-Connect",   "16. Wake-on-LAN (WoL) Integrator",
-        "17. Smart IP & DNS Config",      "18. Open Exports Folder",
-        "19. Pack & Go (Zip and Exit)",   "20. Modern Domain Check (RDAP)",
-        "21. Deep Domain Dossier (OSINT)",""
+        "17. Smart IP & DNS Config",      "18. Modern Domain Check (RDAP)",
+        "19. Deep Domain Dossier (OSINT)","20. Open Exports Folder",
+        "21. Pack & Go (Zip and Exit)",   ""
     )
     for ($i = 0; $i -lt $m.Count; $i += 2) { $left = $m[$i].PadRight(35); $right = $m[$i+1]; Write-Host "  $left  $right" }
     Write-Host "--------------------------------------------------------------------------"
@@ -712,7 +712,7 @@ while ($run) {
         "5"{Invoke-SmartSubnetSweep};"6"{Invoke-MacToIpResolver};"7"{Invoke-RogueScanner};"8"{Invoke-DNSHTTPCheck}
         "9"{Invoke-LocalAttackSurface};"10"{Invoke-VulnMatrix};"11"{Invoke-BandwidthTest};"12"{Invoke-PortScan}
         "13"{Invoke-AdapterHealth};"14"{Invoke-DeepOSInspection};"15"{Invoke-SSHLauncher};"16"{Invoke-WakeOnLan}
-        "17"{Invoke-IPConfigurator};"18"{Invoke-Item $exportDir -ErrorAction SilentlyContinue};"19"{$run=$false; Invoke-PackAndGo}
-        "20"{Invoke-DomainCheck};"21"{Invoke-DomainDossier}
+        "17"{Invoke-IPConfigurator};"18"{Invoke-DomainCheck};"19"{Invoke-DomainDossier}
+        "20"{Invoke-Item $exportDir -ErrorAction SilentlyContinue};"21"{$run=$false; Invoke-PackAndGo}
     }
 }
