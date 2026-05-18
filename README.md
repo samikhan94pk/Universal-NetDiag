@@ -51,10 +51,10 @@ If you are running Datto EDR, Sophos MDR, CrowdStrike, or SentinelOne, ensure th
 15. **Native SSH Quick-Connect:** Embedded SSH session launcher.
 16. **Wake-on-LAN (WoL) Integrator:** Crafts and broadcasts UDP magic packets.
 17. **Smart IP & DNS Configurator:** Rapidly switch adapters between DHCP and Static.
-18. **Open Exports Folder:** Quick access to generated reports.
-19. **Pack & Go:** Zips all generated reports and securely wipes the raw export directory.
-20. **Modern Domain Check (RDAP):** Queries ICANN's RDAP database for clean domain registration and WHOIS data.
-21. **Deep Domain Dossier (OSINT):** Enumerates DNS, maps IP geolocation/ASN, and runs stealth port scans on external domains.
+18. **Modern Domain Check (RDAP):** Queries ICANN's RDAP database for clean domain registration and WHOIS data.
+19. **Deep Domain Dossier (OSINT):** Enumerates DNS, maps IP geolocation/ASN, and runs stealth port scans on external domains.
+20. **Open Exports Folder:** Quick access to generated reports.
+21. **Pack & Go:** Zips all generated reports and securely wipes the raw export directory.
 
 ## 📄 License
 This project is licensed under the MIT License - see the `LICENSE` file for details.
