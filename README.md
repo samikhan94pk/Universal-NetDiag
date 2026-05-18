@@ -2,11 +2,12 @@
 
 A fully self-contained, zero-install PowerShell toolkit designed for Systems Engineers, Network Administrators, and IT infrastructure professionals. 
 
-This suite provides deep, automated network diagnostics, Layer-2 discovery, security posture mapping, and executive-level reporting. It is engineered for maximum compatibility, gracefully falling back between modern PowerShell 7+ native commands and legacy Windows PowerShell 5.1 asynchronous .NET tasks.
+This suite provides deep, automated network diagnostics, Layer-2 discovery, security posture mapping, deep domain reconnaissance, and executive-level reporting. It is engineered for maximum compatibility, gracefully falling back between modern PowerShell 7+ native commands and legacy Windows PowerShell 5.1 asynchronous .NET tasks.
 
 ## 🚀 Key Features
 
 * **Smart CIDR Subnet Sweeper & Diff Engine:** Automatically calculates your current subnet, executes a multi-threaded async ping sweep, maps the ARP cache against an embedded MAC vendor dictionary, and compares results to historical baselines to identify **Rogue Devices** or offline hardware.
+* **Deep Domain OSINT & Reconnaissance:** Bypasses legacy WHOIS by utilizing modern RDAP and REST APIs to seamlessly map domain infrastructure, resolve DNS records, geolocate hosting providers, and execute stealth service scans on external targets without relying on third-party web scrapers.
 * **Local Attack Surface Analyzer:** Maps local listening TCP/UDP ports to specific PIDs and process names to detect dangerously exposed services (e.g., RDP/SMB open to 0.0.0.0).
 * **Network Vulnerability Matrix:** Sweeps the local segment for top-risk management ports (Telnet, FTP, HTTP, RDP, SMB) and generates a visual risk matrix for the entire subnet.
 * **Executive Document Generation:** Automatically generates cleanly formatted, professional HTML/Word reports detailing network health, dropping pure telemetry data into client-ready formats with visual progress bars.
@@ -52,6 +53,8 @@ If you are running Datto EDR, Sophos MDR, CrowdStrike, or SentinelOne, ensure th
 17. **Smart IP & DNS Configurator:** Rapidly switch adapters between DHCP and Static.
 18. **Open Exports Folder:** Quick access to generated reports.
 19. **Pack & Go:** Zips all generated reports and securely wipes the raw export directory.
+20. **Modern Domain Check (RDAP):** Queries ICANN's RDAP database for clean domain registration and WHOIS data.
+21. **Deep Domain Dossier (OSINT):** Enumerates DNS, maps IP geolocation/ASN, and runs stealth port scans on external domains.
 
 ## 📄 License
 This project is licensed under the MIT License - see the `LICENSE` file for details.
